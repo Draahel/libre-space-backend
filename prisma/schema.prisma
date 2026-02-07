@@ -1,0 +1,161 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- MÓDULO DE USUARIOS ---
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  full_name         String
+  role              Role              @default(REPORTER)
+  image             String?
+  
+  // Relaciones
+  account           Account?
+  technical_profile TechnicalProfile?
+  tasks_created     Task[]            @relation("CreatedBy")
+  records_updated   Record[]          @relation("UpdatedBy")
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  MAINTENANCE
+  REPORTER
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  user_id   String   @unique
+  provider  Provider @default(LOCAL)
+  password  String?  // Nullable para usuarios de Azure Entra ID
+  
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+enum Provider {
+  LOCAL
+  AZURE_ENTRA_ID
+}
+
+// --- MÓDULO TÉCNICO ---
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  tags        String[] // Array de especialidades que maneja el área
+  
+  profiles    TechnicalProfile[]
+  tasks       Task[]
+
+  @@map("departments")
+}
+
+model TechnicalProfile {
+  id            String     @id @default(uuid())
+  user_id       String     @unique
+  department_id String
+  current_load  Int        @default(0)
+  is_available  Boolean    @default(true)
+
+  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  department    Department @relation(fields: [department_id], references: [id])
+  tasks_assigned Task[]
+
+  @@map("technical_profiles")
+}
+
+// --- MÓDULO DE INFRAESTRUCTURA ---
+
+model Location {
+  id        String     @id @default(uuid())
+  name      String
+  type      String     // 'FLOOR', 'ROOM', 'AREA', etc.
+  parent_id String?
+  
+  parent    Location?  @relation("LocationHierarchy", fields: [parent_id], references: [id])
+  children  Location[] @relation("LocationHierarchy")
+  tasks     Task[]
+
+  @@map("locations")
+}
+
+// --- MÓDULO DE TAREAS ---
+
+model Task {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  state         State    @default(OPEN)
+  weight        Int      @default(1) // Calculado por IA
+  priority      Priority @default(MEDIUM) // Calculado por IA
+  tags          String[]
+  
+  // Relaciones y FKs
+  location_id   String
+  department_id String   // 'area' en tu diagrama, vinculado al depto responsable
+  created_by_id String
+  assigned_to_id String? // ID del TechnicalProfile (user_id)
+
+  location      Location          @relation(fields: [location_id], references: [id])
+  department    Department        @relation(fields: [department_id], references: [id])
+  creator       User              @relation("CreatedBy", fields: [created_by_id], references: [id])
+  assignee      TechnicalProfile? @relation(fields: [assigned_to_id], references: [user_id])
+  
+  records       Record[]
+  created_at    DateTime          @default(now())
+
+  @@map("tasks")
+}
+
+enum State {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// --- AUDITORÍA ---
+
+model Record {
+  id                String   @id @default(uuid())
+  task_id           String
+  updated_by        String   // FK a User.id
+  updated_attribute String   // Ej: 'state', 'assigned_to'
+  current_value     String
+  previous_value    String?
+  update_date       DateTime @default(now())
+
+  task              Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  user              User     @relation("UpdatedBy", fields: [updated_by], references: [id])
+
+  @@map("records")
+}
