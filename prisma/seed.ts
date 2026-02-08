@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -22,6 +22,16 @@ async function main() {
       name: 'Sistemas',
       description: 'Soporte técnico, redes y hardware.',
       tags: ['internet', 'computador', 'proyector', 'software'],
+    },
+  });
+
+  await prisma.department.upsert({
+    where: { name: 'Unclassified' },
+    update: {},
+    create: {
+      name: 'Unclassified',
+      description: 'Departamento sin clasificar.',
+      tags: ['sin clasificar'],
     },
   });
 

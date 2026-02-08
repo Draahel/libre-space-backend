@@ -5,8 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -106,7 +105,7 @@ model Task {
   id            String   @id @default(uuid())
   title         String
   description   String
-  state         State    @default(OPEN)
+  state         State    @default(NEW)
   weight        Int      @default(1) // Calculado por IA
   priority      Priority @default(MEDIUM) // Calculado por IA
   tags          String[]
@@ -129,6 +128,7 @@ model Task {
 }
 
 enum State {
+  NEW
   OPEN
   ASSIGNED
   IN_PROGRESS

@@ -6,11 +6,18 @@ import { UsersModule } from './users/users.module';
 import { LocationsModule } from './locations/locations.module';
 import { TasksModule } from './tasks/tasks.module';
 import { AiModule } from './ai/ai.module';
-import { PrismaService } from './common/prisma/prisma.service';
+import { PrismaModule } from './common/prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, LocationsModule, TasksModule, AiModule],
+  imports: [
+    AuthModule,
+    UsersModule,
+    LocationsModule,
+    TasksModule,
+    AiModule,
+    PrismaModule,
+  ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [AppService],
 })
 export class AppModule {}
