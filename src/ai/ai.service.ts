@@ -13,7 +13,7 @@ export class AiService {
     }
 
     this.genAi = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAi.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = this.genAi.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
   async analizyIncident(
@@ -45,7 +45,8 @@ export class AiService {
       return JSON.parse(
         text.replace(/```json|```/g, '').trim(),
       ) as AIAnalysisResult;
-    } catch {
+    } catch (error) {
+      console.error('Failed to analyze incident with AI', error);
       throw new InternalServerErrorException(
         'Failed to analyze incident with AI',
       );
