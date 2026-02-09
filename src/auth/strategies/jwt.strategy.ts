@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { Role, User } from '@prisma/client';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 @Injectable()
@@ -12,7 +13,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: Record<string, string>): unknown {
-    return { userId: payload.sub, email: payload.email, role: payload.role };
+  validate(payload: Record<string, string>): Partial<User> {
+    const role: Role = payload.role as Role;
+    return { id: payload.sub, email: payload.email, role };
   }
 }
