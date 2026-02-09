@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { AzureAuthGuard } from './guards/azure-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -11,6 +12,12 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   login(@Request() req: Request & { user: User }) {
+    return this.authService.login(req.user);
+  }
+
+  @UseGuards(AzureAuthGuard)
+  @Post('azure-login')
+  azureLogin(@Request() req: Request & { user: User }) {
     return this.authService.login(req.user);
   }
 
