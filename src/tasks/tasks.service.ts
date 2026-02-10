@@ -1,5 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma, Record, State, Task } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+import { Prisma, Record, State, Task, User } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { AiService } from 'src/ai/ai.service';
 import { AIAnalysisResult } from 'src/ai/interfaces/analysis-result.interface';
@@ -89,15 +93,27 @@ export class TasksService {
   async update(
     taskId: string,
     updateData: UpdateTaskDto,
-    updaterId: string,
+    updaterData: User,
   ): Promise<Task> {
-    if (!taskId || !updateData || !Object.keys(updateData).length)
+    if (!taskId || !updateData || !Object.keys(updateData).length) {
       throw new BadRequestException('Task id must be supply.');
+    }
     const currentTask = await this.prisma.task.findUnique({
       where: {
         id: taskId,
       },
     });
+
+    if (updaterData.role === 'REPORTER') {
+      const allowedFields = ['description', 'location_id'];
+      const attemptingForbidden = Object.keys(updateData).some(
+        (key) => !allowedFields.includes(key),
+      );
+
+      if (attemptingForbidden) {
+        throw new ForbiddenException('Action not allowed');
+      }
+    }
 
     const auditRecords: Partial<Record>[] = [];
     Object.keys(updateData).forEach((key) => {
@@ -107,7 +123,7 @@ export class TasksService {
           updated_attribute: key,
           previous_value: currentTask?.[key] as string,
           current_value: updateData[key] as string,
-          updated_by: updaterId,
+          updated_by: updaterData.id,
         });
       }
     });

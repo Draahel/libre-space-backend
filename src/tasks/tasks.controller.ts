@@ -42,7 +42,6 @@ export class TasksController {
     @Param('id') taskId: string,
     @Req() req: Request & { user: User },
   ) {
-    const updaterId = req.user.id;
-    return this.tasksService.update(taskId, updateData, updaterId);
+    return this.tasksService.update(taskId, updateData, req.user);
   }
 }
