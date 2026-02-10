@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, State, Task } from '@prisma/client';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { Prisma, Record, State, Task } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { AiService } from 'src/ai/ai.service';
 import { AIAnalysisResult } from 'src/ai/interfaces/analysis-result.interface';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
@@ -82,6 +83,68 @@ export class TasksService {
         assignee: true,
         location: true,
       },
+    });
+  }
+
+  async update(
+    taskId: string,
+    updateData: UpdateTaskDto,
+    updaterId: string,
+  ): Promise<Task> {
+    if (!taskId || !updateData || !Object.keys(updateData).length)
+      throw new BadRequestException('Task id must be supply.');
+    const currentTask = await this.prisma.task.findUnique({
+      where: {
+        id: taskId,
+      },
+    });
+
+    const auditRecords: Partial<Record>[] = [];
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] !== currentTask?.[key]) {
+        auditRecords.push({
+          task_id: taskId,
+          updated_attribute: key,
+          previous_value: currentTask?.[key] as string,
+          current_value: updateData[key] as string,
+          updated_by: updaterId,
+        });
+      }
+    });
+
+    return this.prisma.$transaction(async (trx) => {
+      const updatedTask = await trx.task.update({
+        where: { id: taskId },
+        data: updateData as unknown as Task,
+      });
+
+      if (auditRecords.length) {
+        await trx.record.createMany({ data: auditRecords as Record[] });
+      }
+
+      if (
+        updateData.department_id &&
+        updateData.department_id !== currentTask?.department_id
+      ) {
+        await trx.task.update({
+          where: { id: taskId },
+          data: { assigned_to_id: null, state: 'OPEN' },
+        });
+
+        if (currentTask?.assigned_to_id) {
+          const technical = await trx.technicalProfile.findFirst({
+            where: { user_id: currentTask?.assigned_to_id },
+          });
+          await trx.technicalProfile.update({
+            where: { user_id: currentTask?.assigned_to_id },
+            data: {
+              current_load: (technical?.current_load || 0) - currentTask.weight,
+            },
+          });
+        }
+      }
+
+      return updatedTask;
     });
   }
 }
