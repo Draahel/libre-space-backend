@@ -41,10 +41,11 @@ enum Role {
 }
 
 model Account {
-  id        String   @id @default(uuid())
-  user_id   String   @unique
-  provider  Provider @default(LOCAL)
-  password  String?  // Nullable para usuarios de Azure Entra ID
+  id            String   @id @default(uuid())
+  user_id       String   @unique
+  provider      Provider @default(LOCAL)
+  password      String?  // Nullable para usuarios de Azure Entra ID
+  refresh_token String?  // Nullable para usuarios no legeados
   
   user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 

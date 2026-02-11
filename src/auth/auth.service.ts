@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -26,14 +26,37 @@ export class AuthService {
     return account.user;
   }
 
-  login(user: User): {
+  async login(user: User): Promise<{
     accessToken: string;
+    refreshToken: string;
     user: Omit<User, 'createdAt' | 'updatedAt'>;
-  } {
+  }> {
     const { id, email, full_name, role, image } = user;
     const payload = { sub: id, email, role };
+
+    const refreshToken = this.jwtService.sign(
+      { sub: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: '7d',
+      },
+    );
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, salt);
+
+    await this.prisma.account.update({
+      data: {
+        refresh_token: hashedRefreshToken,
+      },
+      where: {
+        user_id: id,
+      },
+    });
+
     return {
       accessToken: this.jwtService.sign(payload),
+      refreshToken,
       user: {
         id,
         email,
@@ -68,5 +91,26 @@ export class AuthService {
       });
     }
     return account.user;
+  }
+
+  async refresToken(userId: string, refreshToken: string) {
+    const account = await this.prisma.account.findUnique({
+      where: { user_id: userId },
+      include: { user: true },
+    });
+
+    if (!account?.refresh_token) {
+      throw new UnauthorizedException('Refresh token invalid');
+    }
+    const plainRefreshToken = await bcrypt.compare(
+      refreshToken,
+      account.refresh_token as string,
+    );
+
+    if (!plainRefreshToken) {
+      throw new UnauthorizedException('Refresh token invalid');
+    }
+
+    return this.login(account.user);
   }
 }
