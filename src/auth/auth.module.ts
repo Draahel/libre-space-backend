@@ -14,7 +14,7 @@ import { AzureAuthStrategy } from './strategies/azure.strategy';
     PrismaModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default_secret',
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '7m' },
     }),
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, AzureAuthStrategy],
