@@ -104,7 +104,7 @@ export class AuthService {
     }
     const plainRefreshToken = await bcrypt.compare(
       refreshToken,
-      account.refresh_token as string,
+      account.refresh_token,
     );
 
     if (!plainRefreshToken) {

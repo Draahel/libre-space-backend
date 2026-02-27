@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Request,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { User } from '@prisma/client';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
@@ -25,5 +33,13 @@ export class AuthController {
   @Get('profile')
   getProfile(@Request() req: Request & { user: User }) {
     return req.user;
+  }
+
+  @Post('refresh')
+  refreshToken(@Body() body: { userId: string; refreshToken: string }) {
+    if (!body.userId || !body.refreshToken) {
+      throw new UnauthorizedException('Missing credentials for refresh');
+    }
+    return this.authService.refresToken(body.userId, body.refreshToken);
   }
 }

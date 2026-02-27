@@ -16,20 +16,20 @@ datasource db {
 // --- MÓDULO DE USUARIOS ---
 
 model User {
-  id                String            @id @default(uuid())
-  email             String            @unique
-  full_name         String
-  role              Role              @default(REPORTER)
-  image             String?
-  
+  id        String  @id @default(uuid())
+  email     String  @unique
+  full_name String
+  role      Role    @default(REPORTER)
+  image     String?
+
   // Relaciones
   account           Account?
   technical_profile TechnicalProfile?
   tasks_created     Task[]            @relation("CreatedBy")
   records_updated   Record[]          @relation("UpdatedBy")
 
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
@@ -44,10 +44,10 @@ model Account {
   id            String   @id @default(uuid())
   user_id       String   @unique
   provider      Provider @default(LOCAL)
-  password      String?  // Nullable para usuarios de Azure Entra ID
-  refresh_token String?  // Nullable para usuarios no legeados
-  
-  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  password      String? // Nullable para usuarios de Azure Entra ID
+  refresh_token String? // Nullable para usuarios no legeados
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("accounts")
 }
@@ -64,22 +64,22 @@ model Department {
   name        String   @unique
   description String?
   tags        String[] // Array de especialidades que maneja el área
-  
-  profiles    TechnicalProfile[]
-  tasks       Task[]
+
+  profiles TechnicalProfile[]
+  tasks    Task[]
 
   @@map("departments")
 }
 
 model TechnicalProfile {
-  id            String     @id @default(uuid())
-  user_id       String     @unique
+  id            String  @id @default(uuid())
+  user_id       String  @unique
   department_id String
-  current_load  Int        @default(0)
-  is_available  Boolean    @default(true)
+  current_load  Int     @default(0)
+  is_available  Boolean @default(true)
 
-  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  department    Department @relation(fields: [department_id], references: [id])
+  user           User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  department     Department @relation(fields: [department_id], references: [id])
   tasks_assigned Task[]
 
   @@map("technical_profiles")
@@ -88,14 +88,14 @@ model TechnicalProfile {
 // --- MÓDULO DE INFRAESTRUCTURA ---
 
 model Location {
-  id        String     @id @default(uuid())
+  id        String  @id @default(uuid())
   name      String
-  type      String     // 'FLOOR', 'ROOM', 'AREA', etc.
+  type      String // 'FLOOR', 'ROOM', 'AREA', etc.
   parent_id String?
-  
-  parent    Location?  @relation("LocationHierarchy", fields: [parent_id], references: [id])
-  children  Location[] @relation("LocationHierarchy")
-  tasks     Task[]
+
+  parent   Location?  @relation("LocationHierarchy", fields: [parent_id], references: [id])
+  children Location[] @relation("LocationHierarchy")
+  tasks    Task[]
 
   @@map("locations")
 }
@@ -103,29 +103,46 @@ model Location {
 // --- MÓDULO DE TAREAS ---
 
 model Task {
-  id            String   @id @default(uuid())
-  title         String
-  description   String
-  state         State    @default(NEW)
-  weight        Int      @default(1) // Calculado por IA
-  priority      Priority @default(MEDIUM) // Calculado por IA
-  tags          String[]
-  
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  state       State    @default(NEW)
+  weight      Int      @default(1) // Calculado por IA
+  priority    Priority @default(MEDIUM) // Calculado por IA
+  tags        String[]
+  images      String[]
+
   // Relaciones y FKs
-  location_id   String
-  department_id String   // 'area' en tu diagrama, vinculado al depto responsable
-  created_by_id String
+  location_id    String
+  department_id  String // 'area' en tu diagrama, vinculado al depto responsable
+  created_by_id  String
   assigned_to_id String? // ID del TechnicalProfile (user_id)
 
-  location      Location          @relation(fields: [location_id], references: [id])
-  department    Department        @relation(fields: [department_id], references: [id])
-  creator       User              @relation("CreatedBy", fields: [created_by_id], references: [id])
-  assignee      TechnicalProfile? @relation(fields: [assigned_to_id], references: [user_id])
-  
-  records       Record[]
-  created_at    DateTime          @default(now())
+  location   Location          @relation(fields: [location_id], references: [id])
+  department Department        @relation(fields: [department_id], references: [id])
+  creator    User              @relation("CreatedBy", fields: [created_by_id], references: [id])
+  assignee   TechnicalProfile? @relation(fields: [assigned_to_id], references: [user_id])
+
+  records    Record[]
+  created_at DateTime  @default(now())
+  subTasks   SubTask[]
 
   @@map("tasks")
+}
+
+model SubTask {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  state       State    @default(NEW)
+  created_at  DateTime @default(now())
+
+  // Relaciones y FKs
+  task_id String
+
+  task Task @relation(fields: [task_id], references: [id])
+
+  @@map("sub_tasks")
 }
 
 enum State {
@@ -149,14 +166,14 @@ enum Priority {
 model Record {
   id                String   @id @default(uuid())
   task_id           String
-  updated_by        String   // FK a User.id
-  updated_attribute String   // Ej: 'state', 'assigned_to'
+  updated_by        String // FK a User.id
+  updated_attribute String // Ej: 'state', 'assigned_to'
   current_value     String
   previous_value    String?
   update_date       DateTime @default(now())
 
-  task              Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
-  user              User     @relation("UpdatedBy", fields: [updated_by], references: [id])
+  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  user User @relation("UpdatedBy", fields: [updated_by], references: [id])
 
   @@map("records")
 }
