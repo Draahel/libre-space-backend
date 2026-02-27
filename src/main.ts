@@ -8,6 +8,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:4200',
       'https://6b49967z-3000.use2.devtunnels.ms',
+      'https://cleear-pi.vercel.app'
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
